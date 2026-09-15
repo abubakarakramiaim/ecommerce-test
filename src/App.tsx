@@ -1,174 +1,167 @@
 import { useMemo, useState } from 'react'
-import CartDrawer from './components/CartDrawer'
-import CheckoutModal from './components/CheckoutModal'
-import ProductCard from './components/ProductCard'
-import { categories, products, type Product } from './data/products'
-import type { CartLine } from './types'
+import type { FormEvent } from 'react'
+
+type Filter = 'all' | 'active' | 'done'
+
+type Task = {
+  id: number
+  title: string
+  done: boolean
+}
+
+const starterTasks: Task[] = [
+  { id: 1, title: 'Review project brief', done: true },
+  { id: 2, title: 'Sketch the first user flow', done: false },
+  { id: 3, title: 'Set up the component library', done: false },
+  { id: 4, title: 'Share progress with the team', done: false },
+]
+
+const filters: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All tasks' },
+  { value: 'active', label: 'Active' },
+  { value: 'done', label: 'Done' },
+]
+
+function PlusIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
+      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+    </svg>
+  )
+}
 
 export default function App() {
-  const [cart, setCart] = useState<CartLine[]>([])
-  const [cartOpen, setCartOpen] = useState(false)
-  const [checkoutOpen, setCheckoutOpen] = useState(false)
-  const [confirmation, setConfirmation] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('All')
-  const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured')
+  const [tasks, setTasks] = useState<Task[]>(starterTasks)
+  const [filter, setFilter] = useState<Filter>('all')
+  const [newTask, setNewTask] = useState('')
 
-  const visible = useMemo(() => {
-    const filtered = products.filter(
-      (p) =>
-        (category === 'All' || p.category === category) &&
-        p.name.toLowerCase().includes(query.trim().toLowerCase()),
+  const remainingCount = tasks.filter((task) => !task.done).length
+  const visibleTasks = useMemo(
+    () => tasks.filter((task) => filter === 'all' || (filter === 'done' ? task.done : !task.done)),
+    [filter, tasks],
+  )
+
+  function addTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const title = newTask.trim()
+    if (!title) return
+
+    setTasks((current) => [...current, { id: Date.now(), title, done: false }])
+    setNewTask('')
+  }
+
+  function toggleTask(id: number) {
+    setTasks((current) =>
+      current.map((task) => (task.id === id ? { ...task, done: !task.done } : task)),
     )
-    switch (sort) {
-      case 'price-asc':
-        return [...filtered].sort((a, b) => a.price - b.price)
-      case 'price-desc':
-        return [...filtered].sort((a, b) => b.price - a.price)
-      case 'rating':
-        return [...filtered].sort((a, b) => b.rating - a.rating)
-      default:
-        return filtered
-    }
-  }, [query, category, sort])
-
-  const itemCount = cart.reduce((sum, line) => sum + line.qty, 0)
-  const subtotal = cart.reduce((sum, line) => sum + line.qty * line.product.price, 0)
-
-  function addToCart(product: Product) {
-    setCart((prev) => {
-      const existing = prev.find((line) => line.product.id === product.id)
-      if (existing) {
-        return prev.map((line) =>
-          line.product.id === product.id ? { ...line, qty: line.qty + 1 } : line,
-        )
-      }
-      return [...prev, { product, qty: 1 }]
-    })
-    setCartOpen(true)
-  }
-
-  function changeQty(id: number, delta: number) {
-    setCart((prev) =>
-      prev
-        .map((line) => (line.product.id === id ? { ...line, qty: line.qty + delta } : line))
-        .filter((line) => line.qty > 0),
-    )
-  }
-
-  function removeLine(id: number) {
-    setCart((prev) => prev.filter((line) => line.product.id !== id))
-  }
-
-  function placeOrder(name: string) {
-    setCheckoutOpen(false)
-    setCartOpen(false)
-    setCart([])
-    setConfirmation(`Thanks ${name}! Your order is confirmed.`)
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4">
-          <span className="text-xl font-bold tracking-tight">shop<span className="text-indigo-600">one</span></span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search products…"
-            className="ml-auto w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 sm:w-64"
-          />
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            Cart
-            {itemCount > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-xs font-bold text-white">
-                {itemCount}
-              </span>
-            )}
-          </button>
+    <div className="min-h-screen bg-[#f5f7fb] text-[#172033]">
+      <header className="border-b border-[#e5e9f1] bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5 sm:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5b5ce2] text-sm font-bold text-white shadow-[0_6px_16px_rgba(91,92,226,0.28)]">
+              T
+            </div>
+            <span className="text-lg font-semibold tracking-[-0.02em]">Taskboard</span>
+          </div>
+          <span className="hidden text-sm text-[#8a93a5] sm:block">Keep the momentum going.</span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16">
-        <section className="my-8 rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-12 text-white">
-          <h1 className="max-w-lg text-3xl font-bold sm:text-4xl">Gear that makes your desk feel like home</h1>
-          <p className="mt-3 max-w-md text-indigo-100">
-            Free shipping on orders over $150. 30-day returns, no questions asked.
+      <main className="mx-auto max-w-3xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
+        <section className="mb-9">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-[#5b5ce2]">Your workspace</p>
+          <h1 className="text-4xl font-semibold tracking-[-0.045em] text-[#172033] sm:text-5xl">A clear mind starts here.</h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#727d91]">
+            Capture what needs doing, then make steady progress one task at a time.
           </p>
         </section>
 
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                  category === c
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-            aria-label="Sort products"
-            className="ml-auto rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+        <form onSubmit={addTask} className="mb-8 flex flex-col gap-3 rounded-2xl border border-[#e5e9f1] bg-white p-3 shadow-[0_10px_30px_rgba(34,48,78,0.05)] sm:flex-row">
+          <label className="sr-only" htmlFor="new-task">New task</label>
+          <input
+            id="new-task"
+            value={newTask}
+            onChange={(event) => setNewTask(event.target.value)}
+            placeholder="What needs to get done?"
+            className="min-h-12 flex-1 rounded-xl bg-[#f7f8fc] px-4 text-[15px] text-[#172033] outline-none transition placeholder:text-[#a0a8b8] focus:bg-white focus:ring-2 focus:ring-[#c9c9fa]"
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#5b5ce2] px-5 text-sm font-semibold text-white transition hover:bg-[#4d4ed0] focus:outline-none focus:ring-4 focus:ring-[#d9d9fb] active:translate-y-px"
           >
-            <option value="featured">Featured</option>
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-            <option value="rating">Top rated</option>
-          </select>
-        </div>
-
-        {visible.length === 0 ? (
-          <p className="py-16 text-center text-slate-500">No products match your search.</p>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((product) => (
-              <ProductCard key={product.id} product={product} onAdd={addToCart} />
-            ))}
-          </div>
-        )}
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white py-8 text-center text-sm text-slate-500">
-        Demo storefront — built as a single-page app. No real payments.
-      </footer>
-
-      <CartDrawer
-        open={cartOpen}
-        lines={cart}
-        subtotal={subtotal}
-        onClose={() => setCartOpen(false)}
-        onChangeQty={changeQty}
-        onRemove={removeLine}
-        onCheckout={() => setCheckoutOpen(true)}
-      />
-
-      <CheckoutModal
-        open={checkoutOpen}
-        total={subtotal}
-        onClose={() => setCheckoutOpen(false)}
-        onConfirm={placeOrder}
-      />
-
-      {confirmation && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-medium text-white shadow-lg">
-          {confirmation}
-          <button onClick={() => setConfirmation(null)} className="ml-3 opacity-70 hover:opacity-100">
-            ✕
+            <PlusIcon />
+            Add task
           </button>
-        </div>
-      )}
+        </form>
+
+        <section aria-label="Task list" className="overflow-hidden rounded-2xl border border-[#e5e9f1] bg-white shadow-[0_10px_30px_rgba(34,48,78,0.05)]">
+          <div className="flex flex-col gap-4 border-b border-[#edf0f5] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <h2 className="font-semibold text-[#172033]">Tasks</h2>
+              <p className="mt-1 text-sm text-[#8a93a5]">
+                {remainingCount === 0 ? 'Everything is complete.' : `${remainingCount} ${remainingCount === 1 ? 'task' : 'tasks'} remaining`}
+              </p>
+            </div>
+            <div className="flex rounded-lg bg-[#f5f6fa] p-1" role="tablist" aria-label="Filter tasks">
+              {filters.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === option.value}
+                  onClick={() => setFilter(option.value)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition sm:text-sm ${
+                    filter === option.value ? 'bg-white text-[#4e4fd2] shadow-sm' : 'text-[#8a93a5] hover:text-[#555f73]'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            {visibleTasks.length > 0 ? visibleTasks.map((task) => (
+              <div key={task.id} className="group flex items-center gap-4 border-b border-[#edf0f5] px-5 py-4 last:border-b-0 sm:px-6">
+                <button
+                  type="button"
+                  aria-label={task.done ? `Mark "${task.title}" as active` : `Mark "${task.title}" as done`}
+                  aria-pressed={task.done}
+                  onClick={() => toggleTask(task.id)}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition focus:outline-none focus:ring-4 focus:ring-[#e1e1fc] ${
+                    task.done ? 'border-[#5b5ce2] bg-[#5b5ce2] text-white' : 'border-[#cbd2df] bg-white text-transparent hover:border-[#7778e9]'
+                  }`}
+                >
+                  <CheckIcon />
+                </button>
+                <span className={`text-[15px] transition ${task.done ? 'text-[#a0a8b8] line-through' : 'text-[#3f4a60]'}`}>
+                  {task.title}
+                </span>
+                {task.done && <span className="ml-auto text-xs font-medium text-[#a0a8b8]">Completed</span>}
+              </div>
+            )) : (
+              <div className="px-6 py-14 text-center">
+                <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#f0f0ff] text-[#5b5ce2]">
+                  <CheckIcon />
+                </div>
+                <p className="font-medium text-[#3f4a60]">{filter === 'done' ? 'No completed tasks yet.' : 'You are all caught up.'}</p>
+                <p className="mt-1 text-sm text-[#8a93a5]">{filter === 'done' ? 'Finish a task and it will show up here.' : 'Add a new task whenever something comes up.'}</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
     </div>
   )
 }
